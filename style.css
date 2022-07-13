@@ -7,6 +7,8 @@
   --color-light--1: #aaa;
   --color-light--2: #ececec;
   --color-light--3: rgb(214, 222, 224);
+
+  --color-warning--1: #eb1414;
 }
 
 * {
@@ -217,4 +219,39 @@ a:visited {
 }
 .cycling-popup .leaflet-popup-content-wrapper {
   border-left: 5px solid var(--color-brand--1);
+}
+
+/* Clear button */
+.btn__container {
+  display: flex;
+  justify-content: flex-end;
+}
+.btn {
+  background-color: transparent;
+  border: 1px solid var(--color-light--2);
+  border-radius: 5px;
+  padding: 0.6rem 2rem;
+  color: var(--color-light--2);
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.btn--hidden {
+  display: none;
+}
+
+.btn_edit {
+  /* display: grid; */
+  grid-column: 3/ 3;
+  justify-self: end;
+  width: 7rem;
+  margin-top: 1rem;
+  border-color: var(--color-brand--1);
+  color: var(--color-brand--1);
+}
+
+.btn_del {
+  margin-top: 1rem;
+  border-color: var(--color-warning--1);
+  color: var(--color-warning--1);
 }

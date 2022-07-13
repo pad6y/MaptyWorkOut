@@ -65,6 +65,7 @@ const inputDistance = document.querySelector('.form__input--distance');
 const inputDuration = document.querySelector('.form__input--duration');
 const inputCadence = document.querySelector('.form__input--cadence');
 const inputElevation = document.querySelector('.form__input--elevation');
+const btn = document.querySelector('.btn');
 
 class App {
   #map;
@@ -80,9 +81,12 @@ class App {
     this._getLocalStorage();
 
     // Attach event handlers on app load
+    containerWorkouts.addEventListener('click', this._deleteWorkout.bind(this));
+    containerWorkouts.addEventListener('click', this._editWorkout.bind(this));
+    containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
     form.addEventListener('submit', this._newWorkout.bind(this));
     inputType.addEventListener('change', this._toggleElevationField);
-    containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
+    btn.addEventListener('click', this._resetApp.bind(this));
   }
 
   _getPosition() {
@@ -111,6 +115,7 @@ class App {
     //Load markers if workouts array has data
     if (this.#workouts.length > 0) {
       this.#workouts.forEach(workout => this._renderWorkoutMarker(workout));
+      btn.classList.remove('btn--hidden');
     }
   }
 
@@ -190,7 +195,7 @@ class App {
 
     // Add new Object to workout array
     this.#workouts.push(workout);
-
+    btn.classList.remove('btn--hidden');
     // Render workout on map as marker
     // Display Marker
     this._renderWorkoutMarker(workout);
@@ -224,6 +229,9 @@ class App {
   }
 
   _renderWorkout(workout) {
+    const buttons = `<button class="btn btn_edit">Edit</button>
+    <button class="btn btn_del">Del</button>`;
+
     let html = `
       <li class="workout workout--${workout.type}" data-id="${workout.id}">
         <h2 class="workout__title">${workout.description}</h2>
@@ -252,7 +260,8 @@ class App {
           <span class="workout__icon">🦶🏼</span>
           <span class="workout__value">${workout.cadence}</span>
           <span class="workout__unit">spm</span>
-        </div>
+          </div>
+          ${buttons}
       </li>
     `;
 
@@ -267,7 +276,8 @@ class App {
           <span class="workout__icon">⛰</span>
           <span class="workout__value">${workout.elevationGain}</span>
           <span class="workout__unit">m</span>
-        </div>
+          </div>
+          ${buttons}
       </li>
     `;
 
@@ -276,7 +286,8 @@ class App {
 
   _moveToPopup(e) {
     if (!this.#map) return;
-
+    // console.log(e.target.matches('.btn_edit'));
+    // console.log(e.target.closest('.workout').dataset.id);
     const workoutEl = e.target.closest('.workout');
 
     if (!workoutEl) return;
@@ -301,14 +312,102 @@ class App {
   _getLocalStorage() {
     if (!localStorage.getItem('workouts')) return;
 
-    this.#workouts = JSON.parse(localStorage.getItem('workouts'));
+    //reassign prototypes back to objects taken from localstorage
+    this.#workouts = JSON.parse(localStorage.getItem('workouts')).map(
+      workout => {
+        if (workout.type === 'running')
+          return Object.assign(new Running(), workout);
+        if (workout.type === 'cycling')
+          return Object.assign(new Cycling(), workout);
+      }
+    );
 
+    console.log(this.#workouts);
     // Render workouts
     this.#workouts.forEach(workout => this._renderWorkout(workout));
   }
 
-  reset() {
+  _editWorkout(e) {
+    if (!e.target.matches('.btn_edit')) return;
+    e.preventDefault();
+
+    form.classList.remove('hidden');
+
+    const checkTypePopulate = (el, value) => {
+      if (el.closest('.form__row').classList.contains('form__row--hidden'))
+        this._toggleElevationField();
+
+      el.value = value;
+    };
+
+    const workoutid = e.target.closest('.workout').dataset.id;
+    this.#workouts.forEach((workout, index) => {
+      if (workout.id !== workoutid) return;
+      //populate fields
+      inputType.value = this.#workouts[index].type;
+      inputDistance.value = this.#workouts[index].distance;
+      inputDuration.value = this.#workouts[index].duration;
+
+      //check type before populate and toggle fields
+      if (this.#workouts[index].type === 'running') {
+        checkTypePopulate(inputCadence, this.#workouts[index].cadence);
+      }
+
+      if (this.#workouts[index].type === 'cycling') {
+        checkTypePopulate(inputElevation, this.#workouts[index].elevationGain);
+      }
+
+      // Disable type field and focus on distance input field
+      inputDistance.focus();
+      inputType.setAttribute('disabled', true);
+
+      this._updateWorkout(index);
+    });
+  }
+
+  _updateWorkout(index) {
+    form.addEventListener(
+      'submit',
+      e => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // pre populate fields
+        this.#workouts[index].type = inputType.value;
+        this.#workouts[index].distance = +inputDistance.value;
+        this.#workouts[index].duration = +inputDuration.value;
+
+        if (this.#workouts[index].type === 'running')
+          this.#workouts[index].cadence = +inputCadence.value;
+
+        if (this.#workouts[index].type === 'cycling')
+          this.#workouts[index].elevationGain = +inputElevation.value;
+
+        form.classList.add('hidden');
+
+        // update local storage and reload
+        this._setLocalStorage();
+        location.reload();
+      },
+      true
+    );
+  }
+
+  _deleteWorkout(e) {
+    if (!e.target.matches('.btn_del')) return;
+
+    const workoutId = e.target.closest('.workout').dataset.id;
+
+    this.#workouts = this.#workouts.filter(workout => workout.id !== workoutId);
+    this._setLocalStorage();
+    location.reload();
+    // console.log(this.#workouts);
+  }
+
+  _resetApp() {
     localStorage.removeItem('workouts');
+    this.#workouts = [];
+    btn.classList.add('btn--hidden');
     location.reload();
   }
 }
