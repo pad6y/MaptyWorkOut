@@ -65,7 +65,8 @@ const inputDistance = document.querySelector('.form__input--distance');
 const inputDuration = document.querySelector('.form__input--duration');
 const inputCadence = document.querySelector('.form__input--cadence');
 const inputElevation = document.querySelector('.form__input--elevation');
-const btn = document.querySelector('.btn');
+const btnReset = document.querySelector('.btn__reset');
+const btnSort = document.querySelectorAll('.btn__sort');
 
 class App {
   #map;
@@ -86,7 +87,10 @@ class App {
     containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
     form.addEventListener('submit', this._newWorkout.bind(this));
     inputType.addEventListener('change', this._toggleElevationField);
-    btn.addEventListener('click', this._resetApp.bind(this));
+    btnReset.addEventListener('click', this._resetApp.bind(this));
+    btnSort.forEach(el =>
+      el.addEventListener('click', this._sortWorkouts.bind(this))
+    );
   }
 
   _getPosition() {
@@ -115,7 +119,8 @@ class App {
     //Load markers if workouts array has data
     if (this.#workouts.length > 0) {
       this.#workouts.forEach(workout => this._renderWorkoutMarker(workout));
-      btn.classList.remove('btn--hidden');
+      btnReset.classList.remove('btn--hidden');
+      btnSort.forEach(el => el.classList.remove('btn--hidden'));
     }
   }
 
@@ -195,7 +200,9 @@ class App {
 
     // Add new Object to workout array
     this.#workouts.push(workout);
-    btn.classList.remove('btn--hidden');
+    btnReset.classList.remove('btn--hidden');
+    btnSort.forEach(el => el.classList.remove('btn--hidden'));
+
     // Render workout on map as marker
     // Display Marker
     this._renderWorkoutMarker(workout);
@@ -333,6 +340,20 @@ class App {
 
     form.classList.remove('hidden');
 
+    const workoutid = e.target.closest('.workout').dataset.id;
+    const selectedWorkout = this.#workouts.find(w => w.id === workoutid);
+
+    //populate fields
+    this._populateEditForm(selectedWorkout);
+
+    // Disable type field and focus on distance input field
+    inputDistance.focus();
+    inputType.setAttribute('disabled', true);
+
+    this._updateWorkout(selectedWorkout);
+  }
+
+  _populateEditForm(workout) {
     const checkTypePopulate = (el, value) => {
       if (el.closest('.form__row').classList.contains('form__row--hidden'))
         this._toggleElevationField();
@@ -340,32 +361,21 @@ class App {
       el.value = value;
     };
 
-    const workoutid = e.target.closest('.workout').dataset.id;
-    this.#workouts.forEach((workout, index) => {
-      if (workout.id !== workoutid) return;
-      //populate fields
-      inputType.value = this.#workouts[index].type;
-      inputDistance.value = this.#workouts[index].distance;
-      inputDuration.value = this.#workouts[index].duration;
+    inputType.value = workout.type;
+    inputDistance.value = workout.distance;
+    inputDuration.value = workout.duration;
 
-      //check type before populate and toggle fields
-      if (this.#workouts[index].type === 'running') {
-        checkTypePopulate(inputCadence, this.#workouts[index].cadence);
-      }
+    //check type before populate and toggle fields
+    if (workout.type === 'running') {
+      checkTypePopulate(inputCadence, workout.cadence);
+    }
 
-      if (this.#workouts[index].type === 'cycling') {
-        checkTypePopulate(inputElevation, this.#workouts[index].elevationGain);
-      }
-
-      // Disable type field and focus on distance input field
-      inputDistance.focus();
-      inputType.setAttribute('disabled', true);
-
-      this._updateWorkout(index);
-    });
+    if (workout.type === 'cycling') {
+      checkTypePopulate(inputElevation, workout.elevationGain);
+    }
   }
 
-  _updateWorkout(index) {
+  _updateWorkout(workout) {
     form.addEventListener(
       'submit',
       e => {
@@ -373,15 +383,14 @@ class App {
         e.stopPropagation();
 
         // pre populate fields
-        this.#workouts[index].type = inputType.value;
-        this.#workouts[index].distance = +inputDistance.value;
-        this.#workouts[index].duration = +inputDuration.value;
+        workout.type = inputType.value;
+        workout.distance = +inputDistance.value;
+        workout.duration = +inputDuration.value;
 
-        if (this.#workouts[index].type === 'running')
-          this.#workouts[index].cadence = +inputCadence.value;
+        if (workout.type === 'running') workout.cadence = +inputCadence.value;
 
-        if (this.#workouts[index].type === 'cycling')
-          this.#workouts[index].elevationGain = +inputElevation.value;
+        if (workout.type === 'cycling')
+          workout.elevationGain = +inputElevation.value;
 
         form.classList.add('hidden');
 
@@ -407,7 +416,18 @@ class App {
   _resetApp() {
     localStorage.removeItem('workouts');
     this.#workouts = [];
-    btn.classList.add('btn--hidden');
+    btnReset.classList.add('btn--hidden');
+    btnSort.forEach(el => el.classList.add('btn--hidden'));
+    location.reload();
+  }
+
+  _sortWorkouts(e) {
+    this.#workouts.sort(function (a, b) {
+      return e.target.innerText === 'ASC'
+        ? b.distance - a.distance
+        : a.distance - b.distance;
+    });
+    this._setLocalStorage();
     location.reload();
   }
 }
